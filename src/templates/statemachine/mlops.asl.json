@@ -1,0 +1,368 @@
+{
+    "Comment": "kueski state machine",
+    "StartAt": "SageMaker Create Processing Job",
+    "States": {
+        "SageMaker Create Processing Job": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createProcessingJob",
+            "Parameters": {
+                "AppSpecification": {
+                    "ContainerArguments": [
+                        "--dataset_processing_path",
+                        "/opt/ml/processing/output/processed_dataset.parquet",
+                        "--dataset_input_path",
+                        "/opt/ml/processing/input/dataset_credit_risk.csv"
+                    ],
+                    "ContainerEntrypoint": [
+                        "python3",
+                        "/opt/ml/processing/input/code/preprocessing.py"
+                    ],
+                    "ImageUri": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+                },
+                "NetworkConfig": {
+                    "EnableInterContainerTrafficEncryption": false,
+                    "EnableNetworkIsolation": false
+                },
+                "ProcessingInputs": [
+                    {
+                        "InputName": "dataset-credit-risk",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "LocalPath": "/opt/ml/processing/input",
+                            "S3CompressionType": "None",
+                            "S3DataDistributionType": "FullyReplicated",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/dataset/dataset_credit_risk.csv"
+                        }
+                    },
+                    {
+                        "InputName": "preprocessing-code",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "LocalPath": "/opt/ml/processing/input/code",
+                            "S3CompressionType": "None",
+                            "S3DataDistributionType": "FullyReplicated",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/scripts/preprocessing.py"
+                        }
+                    }
+                ],
+                "ProcessingJobName": "kueski-preprocessing",
+                "ProcessingOutputConfig": {
+                    "Outputs": [
+                        {
+                            "OutputName": "output-dataset",
+                            "S3Output": {
+                                "LocalPath": "/opt/ml/processing/output/processed_dataset.parquet",
+                                "S3UploadMode": "EndOfJob",
+                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output"
+                            }
+                        }
+                    ]
+                },
+                "ProcessingResources": {
+                    "ClusterConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.t3.medium",
+                        "VolumeSizeInGB": 5
+                    }
+                },
+                "RoleArn": "${SagemakerRoleArn}",
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 3600
+                }
+            },
+            "Next": "SageMaker Create Feature Store"
+        },
+        "SageMaker Create Feature Store": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createProcessingJob",
+            "Parameters": {
+                "AppSpecification": {
+                    "ContainerArguments": [
+                        "--dataset_processing_path",
+                        "/opt/ml/processing/output/processed_dataset.parquet",
+                        "--dataset_input_path",
+                        "/opt/ml/processing/input/dataset_credit_risk.csv"
+                    ],
+                    "ContainerEntrypoint": [
+                        "python3",
+                        "/opt/ml/processing/input/code/preprocessing.py"
+                    ],
+                    "ImageUri": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+                },
+                "NetworkConfig": {
+                    "EnableInterContainerTrafficEncryption": false,
+                    "EnableNetworkIsolation": false
+                },
+                "ProcessingInputs": [
+                    {
+                        "InputName": "dataset-credit-risk",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "LocalPath": "/opt/ml/processing/input",
+                            "S3CompressionType": "None",
+                            "S3DataDistributionType": "FullyReplicated",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/dataset/dataset_credit_risk.csv"
+                        }
+                    },
+                    {
+                        "InputName": "preprocessing-code",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "LocalPath": "/opt/ml/processing/input/code",
+                            "S3CompressionType": "None",
+                            "S3DataDistributionType": "FullyReplicated",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/scripts/preprocessing.py"
+                        }
+                    }
+                ],
+                "ProcessingJobName": "kueski-preprocessing",
+                "ProcessingOutputConfig": {
+                    "Outputs": [
+                        {
+                            "OutputName": "output-dataset",
+                            "S3Output": {
+                                "LocalPath": "/opt/ml/processing/output/processed_dataset.parquet",
+                                "S3UploadMode": "EndOfJob",
+                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output"
+                            }
+                        }
+                    ]
+                },
+                "ProcessingResources": {
+                    "ClusterConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.t3.medium",
+                        "VolumeSizeInGB": 5
+                    }
+                },
+                "RoleArn": "${SagemakerRoleArn}",
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 3600
+                }
+            },
+            "Next": "SageMaker Create Training Job"
+        },
+        "SageMaker Create Training Job": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createTrainingJob",
+            "Parameters": {
+                "AlgorithmSpecification": {
+                    "TrainingImage": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+                    "TrainingInputMode": "File"
+                },
+                "EnableNetworkIsolation": false,
+                "HyperParameters": {
+                    "n-estimators": "5"
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "training",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output/processed_dataset.parquet",
+                                "S3DataDistributionType": "FullyReplicated"
+                            }
+                        }
+                    }
+                ],
+                "OutputDataConfig": {
+                    "S3OutputPath": "s3://${S3ModelBucket}/output"
+                },
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.c4.2xlarge",
+                    "VolumeSizeInGB": 20
+                },
+                "RoleArn": "${SagemakerRoleArn}",
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 100000
+                },
+                "TrainingJobName.$": "$.commitID"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "SageMaker.AmazonSageMakerException"
+                    ],
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 1,
+                    "BackoffRate": 1.1
+                },
+                {
+                    "ErrorEquals": [
+                        "SageMaker.ResourceLimitExceededException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 1,
+                    "BackoffRate": 1
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "ResultPath": "$.cause",
+                    "Next": "FailState"
+                }
+            ],
+            "Next": "Get Metadata"
+        },
+        "SageMaker Create Model": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createModel",
+            "Parameters": {
+                "ExecutionRoleArn": "${SagemakerRoleArn}",
+                "ModelName.$": "$.TrainingJobName",
+                "PrimaryContainer": {
+                    "ModelDataUrl.$": "$.ModelArtifacts.S3ModelArtifacts",
+                    "Image.$": "$.AlgorithmSpecification.TrainingImage"
+                }
+            },
+            "ResultPath": "$.taskresult",
+            "Next": "SageMaker Create Transform Job",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "FailState"
+                }
+            ]
+        },
+        "SageMaker Create Transform Job": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createTransformJob.sync",
+            "Parameters": {
+                "ModelName.$": "$.TrainingJobName",
+                "TransformInput": {
+                    "SplitType": "Line",
+                    "CompressionType": "None",
+                    "ContentType": "text/csv",
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": "s3://${S3ModelBucket}/iris.csv"
+                        }
+                    }
+                },
+                "TransformOutput": {
+                    "S3OutputPath.$": "States.Format('s3://${S3ModelBucket}/transform_output/{}/iris.csv', $.TrainingJobName)",
+                    "AssembleWith": "Line",
+                    "Accept": "text/csv"
+                },
+                "DataProcessing": {
+                    "InputFilter": "$[1:]"
+                },
+                "TransformResources": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.m4.xlarge"
+                },
+                "TransformJobName.$": "$.TrainingJobName"
+            },
+            "ResultPath": "$.result",
+            "Next": "Send Approve/Reject Email Request",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "FailState"
+                }
+            ]
+        },
+        "Send Approve/Reject Email Request": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "Parameters": {
+                "FunctionName": "${CreateAndEmailLinkFnName}",
+                "Payload": {
+                    "token.$": "$$.Task.Token",
+                    "s3_batch_output.$": "$.result.TransformOutput.S3OutputPath"
+                }
+            },
+            "ResultPath": "$.output",
+            "Next": "Sagemaker Create Endpoint Config",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "rejected"
+                    ],
+                    "ResultPath": "$.output",
+                    "Next": "FailState"
+                }
+            ]
+        },
+        "Sagemaker Create Endpoint Config": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createEndpointConfig",
+            "Parameters": {
+                "EndpointConfigName.$": "$.TrainingJobName",
+                "ProductionVariants": [
+                    {
+                        "InitialInstanceCount": 1,
+                        "InitialVariantWeight": 1,
+                        "InstanceType": "ml.t2.medium",
+                        "ModelName.$": "$.TrainingJobName",
+                        "VariantName": "AllTraffic"
+                    }
+                ]
+            },
+            "ResultPath": "$.result",
+            "Next": "Sagemaker Create Endpoint",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "FailState"
+                }
+            ]
+        },
+        "Sagemaker Create Endpoint": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sagemaker:createEndpoint",
+            "Parameters": {
+                "EndpointName.$": "$.TrainingJobName",
+                "EndpointConfigName.$": "$.TrainingJobName"
+            },
+            "Next": "Send Email With API Endpoint",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "FailState"
+                }
+            ]
+        },
+        "Send Email With API Endpoint": {
+            "Type": "Task",
+            "Resource": "${UpdateSagemakerEndpointAPI}",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "FailState"
+                }
+            ],
+            "Next": "SuccessState"
+        },
+        "SuccessState": {
+            "Type": "Succeed"
+        },
+        "FailState": {
+            "Type": "Fail"
+        }
+    }
+}
