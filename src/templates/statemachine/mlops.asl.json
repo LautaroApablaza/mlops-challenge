@@ -74,7 +74,15 @@
                     "MaxRuntimeInSeconds": 3600
                 }
             },
-            "Next": "SageMaker Create Feature Store"
+            "Next": "SageMaker Create Feature Store",
+            "Catch": [
+                {
+                "ErrorEquals": [
+                    "States.ALL"
+                ],
+                "Next": "FailState"
+                }
+            ]
         },
         "SageMaker Create Feature Store": {
             "Type": "Task",
@@ -148,7 +156,15 @@
                     "MaxRuntimeInSeconds": 3600
                 }
             },
-            "Next": "SageMaker Create Training Job"
+            "Next": "SageMaker Create Training Job",
+            "Catch": [
+                {
+                "ErrorEquals": [
+                    "States.ALL"
+                ],
+                "Next": "FailState"
+                }
+            ]
         },
         "SageMaker Create Training Job": {
             "Type": "Task",
@@ -206,6 +222,8 @@
                     "BackoffRate": 1
                 }
             ],
+            "Next": "Send Manual Approval Email Request",
+
             "Catch": [
                 {
                     "ErrorEquals": [
@@ -214,9 +232,28 @@
                     "ResultPath": "$.cause",
                     "Next": "FailState"
                 }
-            ],
-            "Next": "Get Metadata"
-        },
+            ]
+                },
+                "Send Manual Approval Email Request": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                    "Parameters": {
+                        "FunctionName": "${CreateAndEmailLinkFnName}",
+                        "Payload": {
+                            "token.$":"$$.Task.Token",
+                            "s3_batch_output.$":"$.result.TransformOutput.S3OutputPath"                                      
+                        }
+                    },
+                    "ResultPath": "$.output",
+                    "Next": "Sagemaker Create Model",
+                    "Catch": [
+                        {
+                            "ErrorEquals": [ "rejected" ],
+                            "ResultPath": "$.output",
+                            "Next": "FailState"
+                        }
+                    ]
+                },
         "SageMaker Create Model": {
             "Type": "Task",
             "Resource": "arn:aws:states:::sagemaker:createModel",
@@ -229,75 +266,12 @@
                 }
             },
             "ResultPath": "$.taskresult",
-            "Next": "SageMaker Create Transform Job",
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "Next": "FailState"
-                }
-            ]
-        },
-        "SageMaker Create Transform Job": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::sagemaker:createTransformJob.sync",
-            "Parameters": {
-                "ModelName.$": "$.TrainingJobName",
-                "TransformInput": {
-                    "SplitType": "Line",
-                    "CompressionType": "None",
-                    "ContentType": "text/csv",
-                    "DataSource": {
-                        "S3DataSource": {
-                            "S3DataType": "S3Prefix",
-                            "S3Uri": "s3://${S3ModelBucket}/iris.csv"
-                        }
-                    }
-                },
-                "TransformOutput": {
-                    "S3OutputPath.$": "States.Format('s3://${S3ModelBucket}/transform_output/{}/iris.csv', $.TrainingJobName)",
-                    "AssembleWith": "Line",
-                    "Accept": "text/csv"
-                },
-                "DataProcessing": {
-                    "InputFilter": "$[1:]"
-                },
-                "TransformResources": {
-                    "InstanceCount": 1,
-                    "InstanceType": "ml.m4.xlarge"
-                },
-                "TransformJobName.$": "$.TrainingJobName"
-            },
-            "ResultPath": "$.result",
-            "Next": "Send Approve/Reject Email Request",
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "Next": "FailState"
-                }
-            ]
-        },
-        "Send Approve/Reject Email Request": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-            "Parameters": {
-                "FunctionName": "${CreateAndEmailLinkFnName}",
-                "Payload": {
-                    "token.$": "$$.Task.Token",
-                    "s3_batch_output.$": "$.result.TransformOutput.S3OutputPath"
-                }
-            },
-            "ResultPath": "$.output",
             "Next": "Sagemaker Create Endpoint Config",
             "Catch": [
                 {
                     "ErrorEquals": [
-                        "rejected"
+                        "States.ALL"
                     ],
-                    "ResultPath": "$.output",
                     "Next": "FailState"
                 }
             ]
