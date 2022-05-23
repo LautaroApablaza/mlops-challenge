@@ -11,6 +11,7 @@ from sagemaker.feature_store.feature_group import FeatureGroup
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-file', type=str, default='train.csv')
+    parser.add_argument('--input-path', type=str, default='/opt/ml/processing/input')
     parser.add_argument('--region', type=str, default="us-east-1")
     parser.add_argument('--s3-path', type=str)
     parser.add_argument('--feature-group', type=str)
@@ -26,13 +27,13 @@ class FeatureStore():
 
     def __init__(self, region : str) -> None:
         self.boto_session = boto3.Session(region=region)
-        self.sagemaker_client = boto_session.Session(service_name="sagemaker", region_name=region)
-        self.featurestore_runtime = boto_session.client(service_name="sagemaker-featurestore-runtime",
+        self.sagemaker_client = self.boto_session.Session(service_name="sagemaker", region_name=region)
+        self.featurestore_runtime = self.boto_session.client(service_name="sagemaker-featurestore-runtime",
                                                      region_name=region)
 
-        self.feature_store_session = Session(boto_session=boto_session,
-                                    sagemaker_client=sagemaker_client,
-                                    sagemaker_featurestore_runtime_client=featurestore_runtime)
+        self.feature_store_session = Session(boto_session=self.boto_session,
+                                    sagemaker_client=self.sagemaker_client,
+                                    sagemaker_featurestore_runtime_client=self.featurestore_runtime)
 
     def get_data_for_register(self, data_file : str) -> None:
         self.data = pd.read_csv(data_file)

@@ -1,6 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: SAM App to deploy Step functions and Sagemaker CICD pipeline
 
 Parameters:
 
@@ -9,18 +8,18 @@ Parameters:
     Type: String
     Default: MLOpsStepFunction
     
-  S3ModelBucket:
+  S3MlopsBucket:
     Description: Bucket to store model and data
     Type: String
-    Default: mlops-cicd
+    Default: mlops-project-lab-us-east-1
 
 
 Resources:
 
-  SNSApprovalEmail:
+  SNSManualApprovalEmail:
     Type: AWS::SNS::Topic
     Properties:       
-      TopicName: SNSApprovalEmail  
+      TopicName: SNSManualApprovalEmail 
         
   HttpAPI:
     Type: AWS::Serverless::HttpApi
@@ -31,45 +30,70 @@ Resources:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: !Sub ${StateMachineName}-${AWS::AccountId}
-      DefinitionUri: ../statemachine/mlops.asl.json
+      DefinitionUri: ./statemachine/mlops.asl.json
       DefinitionSubstitutions:
-        CreateAndEmailLinkFnName: !Ref CreateAndEmailLinks
+        EmailLinkFunctionName: !Ref EmailLinkFunction
         UpdateSagemakerEndpointAPI: !GetAtt UpdateSagemakerEndpointAPI.Arn
         SagemakerRoleArn: !GetAtt SageMakerRole.Arn
-        S3ModelBucket: !Ref S3ModelBucket
+        S3MlopsBucket: !Ref S3MlopsBucket
       Role: !GetAtt StepFunctionsRole.Arn
 
-  CreateAndEmailLinks:
+  FeatureStoreFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../functions/create_and_email_accept_reject_links/
+      CodeUri: ../scripts/functions/api_feature_store_endpoint
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sagemaker:InvokeEndpoint
+              Resource: '*'         
+      Events:
+        ExplicitApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpAPI
+            Method: POST
+            Path: /invokeFeatureStore
+      Environment:
+        Variables:
+          FeatureGroup: mlops_credit_cards_risk
+
+
+  EmailLinkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../scripts/functions/create_email_manual_approval
       Handler: app.lambda_handler
       Runtime: python3.8
       Policies:
       - SNSPublishMessagePolicy:
-          TopicName: SNSApprovalEmail      
+          TopicName: SNSManualApprovalEmail      
       Environment:
         Variables:
           HttpApiID: !Ref HttpAPI
-          SNSArn: !Ref SNSApprovalEmail
+          SNSArn: !Ref SNSManualApprovalEmail
 
   UpdateSagemakerEndpointAPI:
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: ../functions/update_sagemakerEndpoint_API/
+      CodeUri: ../scripts/functions/update_sagemakerEndpoint_API
       Handler: app.lambda_handler
       Runtime: python3.8
       Timeout: 600
       Policies:
       - SNSPublishMessagePolicy:
-          TopicName: SNSApprovalEmail
-      - Version: '2012-10-17' # Policy Document
+          TopicName: SNSManualApprovalEmail
+      - Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Action:
               - lambda:UpdateFunctionConfiguration
             Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${TestSagemakerEndpoint}
-      - Version: '2012-10-17' # Policy Document
+      - Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Action:
@@ -79,12 +103,12 @@ Resources:
         Variables:
           Endpoint_FunctionName: !Ref TestSagemakerEndpoint
           HttpApiID: !Ref HttpAPI
-          SNSArn: !Ref SNSApprovalEmail    
+          SNSArn: !Ref SNSManualApprovalEmail    
 
   RespondEmailLinks:    
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: ../functions/respond_to_links/
+      CodeUri: ../scripts/functions/response_to_model_approval/
       Handler: app.lambda_handler
       Runtime: python3.8
       Policies:
@@ -100,20 +124,23 @@ Resources:
             - states:SendTaskHeartbeat          
           Resource: !Sub "arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${StateMachineName}-${AWS::AccountId}"         
       Events:
-        ExplicitApi: # warning: creates a public endpoint
+        ExplicitApi: 
           Type: HttpApi
           Properties:
             ApiId: !Ref HttpAPI
             Method: GET
             Path: /respond
+
+
+
   TestSagemakerEndpoint:
     Type: AWS::Serverless::Function 
     Properties:
-      CodeUri: ../functions/api_sagemaker_endpoint/
+      CodeUri: ..scripts/functions/api_feature_store_endpoint
       Handler: app.lambda_handler
       Runtime: python3.8
       Policies:
-        - Version: '2012-10-17' # Policy Document
+        - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
@@ -126,6 +153,9 @@ Resources:
             ApiId: !Ref HttpAPI
             Method: POST
             Path: /invokeSagemakerAPI
+
+
+            
   SageMakerRole:
       Type: AWS::IAM::Role
       Properties:       
@@ -197,8 +227,8 @@ Resources:
                                 "s3:DeleteObject"
                             ],
                             "Resource": [
-                                "arn:aws:s3:::${S3ModelBucket}",
-                                "arn:aws:s3:::${S3ModelBucket}/*"
+                                "arn:aws:s3:::${S3MlopsBucket}",
+                                "arn:aws:s3:::${S3MlopsBucket}/*"
                             ]
                         }
                       ]
@@ -206,7 +236,7 @@ Resources:
             - {
                 AccountID: !Ref AWS::AccountId, 
                 Region: !Ref AWS::Region,
-                S3ModelBucket: !Ref S3ModelBucket  
+                S3MlopsBucket: !Ref S3MlopsBucket  
               } 
   StepFunctionsRole:
       Type: AWS::IAM::Role
@@ -310,8 +340,8 @@ Outputs:
   MLOpsStateMachineArn:
     Description: "State machine ARN"
     Value: !Ref MLOpsStateMachine
-  SNSApprovalEmail:
+  SNSManualApprovalEmail:
     Description: "SNS ARN"
-    Value: !Ref SNSApprovalEmail
+    Value: !Ref SNSManualApprovalEmail
 
   

@@ -1,5 +1,5 @@
 {
-    "Comment": "kueski state machine",
+    "Comment": "mlops state machine",
     "StartAt": "SageMaker Create Processing Job",
     "States": {
         "SageMaker Create Processing Job": {
@@ -8,14 +8,19 @@
             "Parameters": {
                 "AppSpecification": {
                     "ContainerArguments": [
-                        "--dataset_processing_path",
-                        "/opt/ml/processing/output/processed_dataset.parquet",
-                        "--dataset_input_path",
-                        "/opt/ml/processing/input/dataset_credit_risk.csv"
+                        "--data-file",
+                        "dataset_credit_risk.csv",
+                        "--output-file",
+                        "train_model.parquet",
+                        "--input-path",
+                        "/opt/ml/processing/input",
+                        "--output-path",
+                        "/opt/ml/processing/output/data"
+                        
                     ],
                     "ContainerEntrypoint": [
                         "python3",
-                        "/opt/ml/processing/input/code/preprocessing.py"
+                        "/opt/ml/processing/input/code/processing.py"
                     ],
                     "ImageUri": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
                 },
@@ -25,7 +30,7 @@
                 },
                 "ProcessingInputs": [
                     {
-                        "InputName": "dataset-credit-risk",
+                        "InputName": "dataset-input",
                         "AppManaged": false,
                         "S3Input": {
                             "LocalPath": "/opt/ml/processing/input",
@@ -33,11 +38,11 @@
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
                             "S3InputMode": "File",
-                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/dataset/dataset_credit_risk.csv"
+                            "S3Uri": "s3://${S3MlopsBucket}/source/dataset"
                         }
                     },
                     {
-                        "InputName": "preprocessing-code",
+                        "InputName": "code-input",
                         "AppManaged": false,
                         "S3Input": {
                             "LocalPath": "/opt/ml/processing/input/code",
@@ -45,19 +50,19 @@
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
                             "S3InputMode": "File",
-                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/scripts/preprocessing.py"
+                            "S3Uri": "s3://${S3MlopsBucket}/source/scripts/sagemaker"
                         }
                     }
                 ],
-                "ProcessingJobName": "kueski-preprocessing",
+                "ProcessingJobName": "mlops-processing-job",
                 "ProcessingOutputConfig": {
                     "Outputs": [
                         {
                             "OutputName": "output-dataset",
                             "S3Output": {
-                                "LocalPath": "/opt/ml/processing/output/processed_dataset.parquet",
+                                "LocalPath": "/opt/ml/processing/output/data",
                                 "S3UploadMode": "EndOfJob",
-                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output"
+                                "S3Uri": "s3://${S3MlopsBucket}/processed"
                             }
                         }
                     ]
@@ -90,14 +95,26 @@
             "Parameters": {
                 "AppSpecification": {
                     "ContainerArguments": [
-                        "--dataset_processing_path",
-                        "/opt/ml/processing/output/processed_dataset.parquet",
-                        "--dataset_input_path",
-                        "/opt/ml/processing/input/dataset_credit_risk.csv"
+                        "--data-file",
+                        "train_model.parquet",
+                        "--input-path",
+                        "/opt/ml/processing/input",
+                        "--region",
+                        "us-east-1",
+                        "--s3-path",
+                        "s3://mlops-project-lab-us-east-1/source/feature-store",
+                        "--feature-group",
+                        "mlops_credit_cards_risk",
+                        "--record-identifier",
+                        "id",
+                        "--event-time",
+                        "loan_date",
+                        "--role-arn",
+                        "${SagemakerRoleArn}"
                     ],
                     "ContainerEntrypoint": [
                         "python3",
-                        "/opt/ml/processing/input/code/preprocessing.py"
+                        "/opt/ml/processing/input/code/feature_store.py"
                     ],
                     "ImageUri": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
                 },
@@ -107,7 +124,7 @@
                 },
                 "ProcessingInputs": [
                     {
-                        "InputName": "dataset-credit-risk",
+                        "InputName": "parquet-dataset-input",
                         "AppManaged": false,
                         "S3Input": {
                             "LocalPath": "/opt/ml/processing/input",
@@ -115,11 +132,11 @@
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
                             "S3InputMode": "File",
-                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/dataset/dataset_credit_risk.csv"
+                            "S3Uri": "s3://${S3MlopsBucket}/processed"
                         }
                     },
                     {
-                        "InputName": "preprocessing-code",
+                        "InputName": "feature-store-code",
                         "AppManaged": false,
                         "S3Input": {
                             "LocalPath": "/opt/ml/processing/input/code",
@@ -127,23 +144,11 @@
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
                             "S3InputMode": "File",
-                            "S3Uri": "s3://kueski-lab-us-east-1/source/src/scripts/preprocessing.py"
+                            "S3Uri": "s3://${S3MlopsBucket}/source/scripts/sagemaker"
                         }
                     }
                 ],
-                "ProcessingJobName": "kueski-preprocessing",
-                "ProcessingOutputConfig": {
-                    "Outputs": [
-                        {
-                            "OutputName": "output-dataset",
-                            "S3Output": {
-                                "LocalPath": "/opt/ml/processing/output/processed_dataset.parquet",
-                                "S3UploadMode": "EndOfJob",
-                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output"
-                            }
-                        }
-                    ]
-                },
+                "ProcessingJobName": "mlops-feature-store-job",
                 "ProcessingResources": {
                     "ClusterConfig": {
                         "InstanceCount": 1,
@@ -174,24 +179,31 @@
                     "TrainingImage": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
                     "TrainingInputMode": "File"
                 },
-                "EnableNetworkIsolation": false,
                 "HyperParameters": {
-                    "n-estimators": "5"
+                    "ESTIMATORS": "5"
                 },
+                "EnableNetworkIsolation": false,
+                "Environment": { 
+                    "INPUT_FILE" : "train_model.parquet",
+                    "Y_COLUMN" : "['status']",
+                    "DROP_COLUMN" : "['id', 'status']",
+                    "TEST_SIZE" : "0.3",
+                    "MODEL_FILE" : "model_risk.joblib"
+                 },
                 "InputDataConfig": [
                     {
-                        "ChannelName": "training",
+                        "ChannelName": "TRAINING",
                         "DataSource": {
                             "S3DataSource": {
                                 "S3DataType": "S3Prefix",
-                                "S3Uri": "s3://kueski-lab-us-east-1/processing/output/processed_dataset.parquet",
+                                "S3Uri": "s3://${S3MlopsBucket}/processed",
                                 "S3DataDistributionType": "FullyReplicated"
                             }
                         }
                     }
                 ],
                 "OutputDataConfig": {
-                    "S3OutputPath": "s3://${S3ModelBucket}/output"
+                    "S3OutputPath": "s3://${S3MlopsBucket}/model/output"
                 },
                 "ResourceConfig": {
                     "InstanceCount": 1,
@@ -238,10 +250,10 @@
                     "Type": "Task",
                     "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                     "Parameters": {
-                        "FunctionName": "${CreateAndEmailLinkFnName}",
+                        "FunctionName": "${EmailLinkFunctionName}",
                         "Payload": {
                             "token.$":"$$.Task.Token",
-                            "s3_batch_output.$":"$.result.TransformOutput.S3OutputPath"                                      
+                            "s3_model_metrics_output.$":"$.result.OutputDataConfig.S3OutputPath"                                      
                         }
                     },
                     "ResultPath": "$.output",
@@ -261,11 +273,10 @@
                 "ExecutionRoleArn": "${SagemakerRoleArn}",
                 "ModelName.$": "$.TrainingJobName",
                 "PrimaryContainer": {
-                    "ModelDataUrl.$": "$.ModelArtifacts.S3ModelArtifacts",
-                    "Image.$": "$.AlgorithmSpecification.TrainingImage"
+                    "ModelDataUrl": "s3://${S3MlopsBucket}/model/output/model_risk.tar.gz",
+                    "Image.$": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
                 }
             },
-            "ResultPath": "$.taskresult",
             "Next": "Sagemaker Create Endpoint Config",
             "Catch": [
                 {
@@ -321,7 +332,14 @@
         },
         "Send Email With API Endpoint": {
             "Type": "Task",
-            "Resource": "${UpdateSagemakerEndpointAPI}",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+                "FunctionName": "${UpdateSagemakerEndpointAPI}",
+                "Payload": {
+                    "EndpointName": "$.TrainingJobName"
+                },
+                "InvocationType": "Event"
+            },
             "Catch": [
                 {
                     "ErrorEquals": [
