@@ -23,7 +23,7 @@ This project was built using Amazon Web Services together with the github reposi
 
 <br />
 
-![This is an image](assets\mlops-architecture.PNG)
+![This is an image](assets/mlops-architecture.PNG)
 
 
 <br />
@@ -60,7 +60,7 @@ send emails with different useful links to the user.
 
 The following diagram describes the flow of the Step Function StateMachine. There are several points where the StateMachine has to poll and wait for a task to complete.
 
-![This is an image](assets\state-machine.PNG)
+![This is an image](assets/state-machine.PNG)
 
 
 <br />
