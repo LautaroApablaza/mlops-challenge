@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
+Description: This template is not completed!!!
 
 Parameters:
   GitHubRepo:
@@ -81,12 +82,12 @@ Resources:
                   - states:DescribeExecution  
 
 
-  ArtifactBucket:
+  S3MlopsBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Description: Creating Amazon S3 bucket from CloudFormation
     Properties:
-      BucketName: my-artifact-bucket-7897652321412531
+      BucketName: mlops-project-lab-us-east-1
 
 
   CodeBuildProject:
@@ -100,17 +101,17 @@ Resources:
           version: 0.2
           phases:
             pre_build:
-              commands:
 
             build:
               commands:
-                - aws s3 cp sagemaker-scripts s3://my-artifact-bucket-7897652321412531/ --recursive
+
             post_build:
               commands:
+
       Environment:
         EnvironmentVariables:
           - Name: AWS_S3_BUCKET
-            Value: !Ref ArtifactBucket
+            Value: !Ref S3MlopsBucket
       Name: !Ref AWS::StackName
       ServiceRole: !Ref CodeBuildServiceRole  
 
@@ -121,7 +122,7 @@ Resources:
       RoleArn: !GetAtt CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactBucket
+        Location: !Ref S3MlopsBucket
       Stages:
         - Name: GetSource
           Actions:
@@ -152,20 +153,14 @@ Resources:
               InputArtifacts:
                 - Name: SourceOutput
               RunOrder: 1          
-            - Name: ExecuteMLOpsStepFunction
+            - Name: string
               ActionTypeId:
-                Category: Invoke
+                Category: string
                 Owner: AWS
                 Version: 1
-                Provider: StepFunctions
+                Provider: string
               OutputArtifacts:
-                - Name: myOutputArtifact
+                - Name: string
               Configuration:
-                StateMachineArn: !Ref MlOpsStepFunctionArn
-                ExecutionNamePrefix: my-prefix
               RunOrder: 2
 Outputs:
-  PipelineUrl:
-    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${Pipeline}
-  ArtifactBucket:
-    Value: !Ref ArtifactBucket

@@ -101,7 +101,7 @@ For this solution was created one HTTPS API Gateway which routes the incoming tr
 ## 5. Folder Structure
 
 - **assets:** In this folder you can find the images used to create this file
-- **documents:**  In this folder you can find the raw dataset and the Jupyter notebooks of the feature engineering and training stages.
+- **documents:**  In this folder you can find the Jupyter notebooks of the feature engineering and training stages.
 - **src**:
     - **scripts:** In this folder you can find Python scripts.
         - **sagemaker:**: Python scripts which are executed by the different SageMaker jobs.
