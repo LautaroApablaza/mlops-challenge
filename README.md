@@ -10,7 +10,7 @@ The main objectives of this project are:
 
 I have tried to create a solution that use the AWS Serverless Application Model (AWS SAM) to create a Step Functions workflow with different SageMaker Job´s. They allows us to train ML models, deploy ML models, test results, and expose an inference endpoint. Step function also provides a way to wait for human approval before the state transitions can progress towards the creation of the final model inference endpoint’s.
 
-However, this project only represents a draft of the final solution since due to lack of time I could not finish and test the automation of the pipeline. I consider that it represents a large part of the work to be developed but even so it needs to be improved,
+However, this project only represents a draft of the final solution since due to lack of time I could not finish and test the automation of the pipeline. I consider this project represents a large part of the work to be developed but even so it needs to be improved.
 
 
 
